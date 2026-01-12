@@ -4,3 +4,8 @@ sentence-transformers
 pdfplumber
 groq
 python-dotenv
+tqdm
+requests
+pickle
+
+flask
