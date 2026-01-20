@@ -1,56 +1,57 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>AI Research Assistant</title>
+    <title>AI Research Explorer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
     <style>
         body {
-            font-family: Arial, sans-serif;
-            background: #f4f6f8;
             margin: 0;
-            padding: 0;
+            font-family: "Segoe UI", Arial, sans-serif;
+            background: #f5f7fb;
+            color: #0f172a;
         }
 
         header {
-            background: #1e293b;
+            background: #2563eb;
             color: white;
-            padding: 20px;
+            padding: 18px;
             text-align: center;
+            font-size: 24px;
+            font-weight: bold;
         }
 
         .container {
-            display: flex;
-            height: calc(100vh - 80px);
-        }
-
-        .sidebar {
-            width: 30%;
-            background: #ffffff;
             padding: 20px;
-            overflow-y: auto;
-            border-right: 1px solid #ddd;
-        }
-
-        .main {
-            flex: 1;
-            padding: 20px;
-            overflow-y: auto;
         }
 
         h2 {
-            margin-top: 0;
+            color: #1e3a8a;
         }
 
-        input, textarea, button, select {
-            width: 100%;
-            padding: 10px;
-            margin-top: 8px;
-            margin-bottom: 8px;
+        .search-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        input {
+            flex: 1;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid #cbd5e1;
+            outline: none;
+            background: white;
+            font-size: 15px;
         }
 
         button {
+            padding: 12px 20px;
+            border-radius: 10px;
+            border: none;
             background: #2563eb;
             color: white;
-            border: none;
+            font-weight: bold;
             cursor: pointer;
         }
 
@@ -58,31 +59,99 @@
             background: #1d4ed8;
         }
 
-        .paper {
-            padding: 10px;
-            margin-bottom: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            background: #fafafa;
+        .papers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 15px;
         }
 
-        .paper a {
-            text-decoration: none;
+        .paper-card {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+        }
+
+        .paper-card a {
             color: #2563eb;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .paper-card a:hover {
+            text-decoration: underline;
+        }
+
+        /* Floating Chat Button */
+        .chat-fab {
+            position: fixed;
+            right: 25px;
+            bottom: 25px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #2563eb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            cursor: pointer;
+            color: white;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        /* Chat Panel */
+        .chat-panel {
+            position: fixed;
+            right: 20px;
+            bottom: 100px;
+            width: 380px;
+            height: 500px;
+            background: white;
+            border-radius: 15px;
+            display: none;
+            flex-direction: column;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .chat-header {
+            padding: 12px;
+            background: #2563eb;
+            color: white;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .chat-body {
+            flex: 1;
+            padding: 12px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            font-size: 14px;
+            background: #f8fafc;
+        }
+
+        .chat-input {
+            display: flex;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .chat-input input {
+            flex: 1;
+            border-radius: 0;
+            border: none;
+            padding: 12px;
             font-size: 14px;
         }
 
-        #answerBox {
-            white-space: pre-wrap;
-            background: #ffffff;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            min-height: 200px;
+        .chat-input button {
+            border-radius: 0;
         }
 
         .status {
-            color: green;
+            color: #16a34a;
             font-weight: bold;
         }
     </style>
@@ -90,49 +159,61 @@
 <body>
 
 <header>
-    <h1>📚 AI Research Assistant</h1>
+    🔬 AI Research Explorer
 </header>
 
 <div class="container">
 
-    <!-- LEFT PANEL -->
-    <div class="sidebar">
-        <h2>🔍 Build Index</h2>
-        <input id="topic" placeholder="Enter research topic..." />
-        <button onclick="buildIndex()">Build Index</button>
-        <p id="buildStatus"></p>
+    <h2>🔍 Search Research Papers</h2>
 
-        <hr>
-
-        <h2>📄 Papers Found</h2>
-        <div id="paperList">
-            <p>No papers loaded yet.</p>
-        </div>
+    <div class="search-bar">
+        <input id="topic" placeholder="Enter research topic (e.g., medical imaging AI)" />
+        <button onclick="searchPapers()">🔎 Search</button>
     </div>
 
-    <!-- RIGHT PANEL -->
-    <div class="main">
-        <h2>💬 Ask Question</h2>
+    <p id="statusText"></p>
 
-        <select id="mode">
-            <option value="chat">Chat</option>
-            <option value="summary">Summary</option>
-            <option value="compare">Compare</option>
-        </select>
+    <h2>📚 Retrieved Papers</h2>
 
-        <textarea id="question" rows="3" placeholder="Ask your question..."></textarea>
-        <button onclick="askQuestion()">Ask</button>
+    <div id="papers" class="papers-grid">
+        <p style="color:#64748b;">No papers yet. Search a topic.</p>
+    </div>
+</div>
 
-        <h2>🤖 Answer</h2>
-        <div id="answerBox">No answer yet.</div>
+<!-- Floating Chat Button -->
+<div class="chat-fab" onclick="toggleChat()">💬</div>
+
+<!-- Chat Panel -->
+<div class="chat-panel" id="chatPanel">
+
+    <div class="chat-header">
+        🤖 AI Research Assistant
+        <span style="cursor:pointer;" onclick="toggleChat()">✖</span>
     </div>
 
+    <div class="chat-body" id="chatBody">
+        Ask me anything about the loaded papers.
+    </div>
+
+    <div class="chat-input">
+        <input id="chatInput" placeholder="Ask a question..." />
+        <button onclick="sendChat()">Send</button>
+    </div>
 </div>
 
 <script>
-async function buildIndex() {
+let chatOpen = false;
+
+function toggleChat() {
+    chatOpen = !chatOpen;
+    document.getElementById("chatPanel").style.display = chatOpen ? "flex" : "none";
+}
+
+async function searchPapers() {
     const topic = document.getElementById("topic").value;
-    document.getElementById("buildStatus").innerText = "Building index...";
+    const status = document.getElementById("statusText");
+
+    status.innerText = "⏳ Searching and indexing papers...";
 
     const res = await fetch("/build", {
         method: "POST",
@@ -143,46 +224,49 @@ async function buildIndex() {
     const data = await res.json();
 
     if (data.error) {
-        document.getElementById("buildStatus").innerText = data.error;
+        status.innerText = data.error;
         return;
     }
 
-    document.getElementById("buildStatus").innerText = data.status;
-    document.getElementById("buildStatus").className = "status";
+    status.innerText = "✅ " + data.status;
+    status.className = "status";
 
-    const paperList = document.getElementById("paperList");
-    paperList.innerHTML = "";
+    const papersDiv = document.getElementById("papers");
+    papersDiv.innerHTML = "";
 
     data.papers.forEach((p, i) => {
         const div = document.createElement("div");
-        div.className = "paper";
+        div.className = "paper-card";
         div.innerHTML = `
-            <b>${i+1}. ${p.title}</b><br>
+            <b>${i+1}. ${p.title}</b><br><br>
             <a href="${p.pdf_url}" target="_blank">📄 Open PDF</a>
         `;
-        paperList.appendChild(div);
+        papersDiv.appendChild(div);
     });
 }
 
-async function askQuestion() {
-    const q = document.getElementById("question").value;
-    const mode = document.getElementById("mode").value;
+async function sendChat() {
+    const input = document.getElementById("chatInput");
+    const body = document.getElementById("chatBody");
+    const question = input.value;
 
-    let finalQuestion = q;
+    if (!question) return;
 
-    if (mode === "summary") finalQuestion = "Summarize these papers";
-    if (mode === "compare") finalQuestion = "Compare these papers";
+    body.innerText += "\n\n🧑 You: " + question;
+    body.innerText += "\n🤖 AI: Thinking...\n";
 
-    document.getElementById("answerBox").innerText = "Thinking...";
+    input.value = "";
 
     const res = await fetch("/ask", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({question: finalQuestion})
+        body: JSON.stringify({question: question})
     });
 
     const data = await res.json();
-    document.getElementById("answerBox").innerText = data.answer || data.error;
+
+    body.innerText += data.answer || data.error;
+    body.scrollTop = body.scrollHeight;
 }
 </script>
 
