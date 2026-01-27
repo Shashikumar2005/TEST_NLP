@@ -1,156 +1,68 @@
 from rag_engine import search_chunks
 from llm_client import call_llm
 
-# ----------------------------
-# Intent Detection
-# ----------------------------
 
-def detect_intent(question: str):
-    q = question.lower()
-
-    if "compare" in q or "difference" in q or "vs" in q:
-        return "compare"
-    if "summarize" in q or "summary" in q or "overview" in q:
+def detect_intent(q):
+    q = q.lower()
+    if "compare" in q or "difference" in q:
+        return "comparison"
+    if "summarize" in q or "summary" in q:
         return "summary"
-    return "chat"
+    return "qa"
 
 
-# ----------------------------
-# Prompt Builders
-# ----------------------------
+def answer_question(question, selected_titles=None):
+    intent = detect_intent(question)
 
-def build_chat_prompt(context_blocks, question):
-    context = "\n\n".join(context_blocks)
+    chunks = search_chunks(question, top_k=12, selected_titles=selected_titles)
 
-    prompt = f"""
-You are a research assistant.
+    if not chunks:
+        return "No relevant content found in the papers."
 
-Use ONLY the context below to answer the question.
-If the answer is not in the context, say "Not found in the provided papers."
+    context = ""
+    used_titles = []
+
+    for i, c in enumerate(chunks):
+        context += f"\n[Source {i+1} | {c['title']}]\n{c['text']}\n"
+        if c["title"] not in used_titles:
+            used_titles.append(c["title"])
+
+    if intent == "summary":
+        prompt = f"""
+You are an academic research assistant.
+Summarize the following papers using ONLY the provided context.
+If something is not present, say "Not found in the papers".
 
 Context:
 {context}
-
-Question:
-{question}
-
-Answer:
 """
-    return prompt
 
-
-def build_summary_prompt(grouped_context):
-    text = ""
-
-    for i, (title, chunks) in enumerate(grouped_context.items(), 1):
-        text += f"\nPaper {i}: {title}\n"
-        text += "\n".join(chunks[:5])  # limit per paper
-
-    prompt = f"""
-You are a research assistant.
-
-Summarize EACH paper separately using ONLY the context below.
+    elif intent == "comparison":
+        prompt = f"""
+You are an academic research assistant.
+Compare the following papers based ONLY on the provided context.
+If something is not present, say "Not found in the papers".
 
 Context:
-{text}
-
-Write output in this format:
-
-Paper 1:
-Summary...
-
-Paper 2:
-Summary...
-
-If something is missing, say so.
-
-Answer:
+{context}
 """
-    return prompt
-
-
-def build_compare_prompt(grouped_context, question):
-    text = ""
-
-    for i, (title, chunks) in enumerate(grouped_context.items(), 1):
-        text += f"\nPaper {i}: {title}\n"
-        text += "\n".join(chunks[:5])
-
-    prompt = f"""
-You are a research assistant.
-
-Compare the following papers using ONLY the context below.
-
-Context:
-{text}
-
-Question:
-{question}
-
-Write a structured comparison.
-
-If something is missing, say so.
-
-Answer:
-"""
-    return prompt
-
-
-# ----------------------------
-# Main Chat Function
-# ----------------------------
-
-def answer_question(question: str, top_k=6):
-    """
-    Main entry point for answering user questions.
-    """
-
-    # 1. Detect intent
-    intent = detect_intent(question)
-
-    # 2. Retrieve relevant chunks
-    results = search_chunks(question, top_k=top_k)
-
-    if not results:
-        return "No relevant content found in papers."
-
-    # 3. Group chunks by paper
-    grouped = {}
-
-    for r in results:
-        title = r["title"]
-        chunk = r["text"]
-
-        if title not in grouped:
-            grouped[title] = []
-
-        grouped[title].append(chunk)
-
-    # 4. Build prompts based on intent
-    if intent == "summary":
-        prompt = build_summary_prompt(grouped)
-
-    elif intent == "compare":
-        prompt = build_compare_prompt(grouped, question)
 
     else:
-        # Normal chat / QA
-        context_blocks = []
-        sources = []
+        prompt = f"""
+You are an academic research assistant.
+Answer the question using ONLY the provided context.
+If the answer is not in the context, say "Not found in the papers".
 
-        for i, (title, chunks) in enumerate(grouped.items(), 1):
-            block = f"[{i}] {title}\n" + "\n".join(chunks[:3])
-            context_blocks.append(block)
-            sources.append(f"[{i}] {title}")
+Question: {question}
 
-        prompt = build_chat_prompt(context_blocks, question)
+Context:
+{context}
+"""
 
-    # 5. Call LLM
     answer = call_llm(prompt)
 
-    # 6. Append citations
-    citations = "\n\nSources:\n"
-    for i, title in enumerate(grouped.keys(), 1):
-        citations += f"[{i}] {title}\n"
+    answer += "\n\nSources:\n"
+    for i, t in enumerate(used_titles):
+        answer += f"[{i+1}] {t}\n"
 
-    return answer.strip() + citations
+    return answer
